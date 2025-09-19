@@ -130,10 +130,8 @@ resource "aws_vpc_endpoint" "s3" {
   vpc_id            = aws_vpc.this.id
   service_name      = "com.amazonaws.${var.region}.s3"
   vpc_endpoint_type = "Gateway"
-  route_table_ids   = [aws_route_table.private.id, aws_route_table.public.id]
-  tags = {
-    Name = "${var.cluster_name}-s3-endpoint"
-  }
+  route_table_ids   = [aws_route_table.private.id]
+  tags = { Name = "${var.cluster_name}-s3-endpoint" }
 }
 
 # ECR API, ECR DKR, CloudWatch Logs, STS as Interface Endpoints
@@ -157,21 +155,12 @@ resource "aws_security_group" "vpce" {
 }
 
 resource "aws_vpc_endpoint" "endpoints" {
-  for_each = toset([
-    "ecr.api",
-    "ecr.dkr",
-    "logs",
-    "sts"
-  ])
-
+  for_each            = toset(["ecr.api","ecr.dkr","logs","sts"])
   vpc_id              = aws_vpc.this.id
   service_name        = "com.amazonaws.${var.region}.${each.key}"
   vpc_endpoint_type   = "Interface"
   private_dns_enabled = true
-  subnet_ids          = aws_subnet.public[*].id
+  subnet_ids          = aws_subnet.private[*].id      # <-- move from public[*] to private[*]
   security_group_ids  = [aws_security_group.vpce.id]
-
-  tags = {
-    Name = "${var.cluster_name}-${each.key}-endpoint"
-  }
+  tags = { Name = "${var.cluster_name}-${each.key}-endpoint" }
 }
